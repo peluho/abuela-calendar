@@ -53,15 +53,15 @@ def guardar_json(data):
 
 def guardar_y_commit(data, msg="Update calendar"):
     guardar_json(data)
-    repo = Repo(REPO_PATH)
+    # repo = Repo(REPO_PATH)
 
-    # <-- AÑADE ESTAS DOS LÍNEAS -->
-    with repo.config_writer() as cfg:
-        cfg.set_value("user", "name", "abuela-bot")
-        cfg.set_value("user", "email", "abuela@bot.local")
+    # # <-- AÑADE ESTAS DOS LÍNEAS -->
+    # with repo.config_writer() as cfg:
+    #     cfg.set_value("user", "name", "abuela-bot")
+    #     cfg.set_value("user", "email", "abuela@bot.local")
 
-    repo.git.add(JSON_FILE)
-    repo.index.commit(msg)
+    # repo.git.add(JSON_FILE)
+    # repo.index.commit(msg)
 
 def rango_visible():
     hoy = date.today()
@@ -91,7 +91,7 @@ with st.sidebar:
         cal[key].setdefault("comentarios", []).append(txt)
         guardar_y_commit(cal, f"Comentario {dia_sel}")
         st.success("Guardado")
-        st.rerun()
+        # st.rerun()
 
     if st.button("🔒 Subir cambios a GitHub"):
         url_con_token = st.secrets["REPO_URL"]
@@ -128,7 +128,7 @@ for i, dia in enumerate(dias):
         st.markdown(
             f"<div style='background:{color};padding:6px;border-radius:6px;text-align:center'>"
             f"<b>{DIA_SEM[dia.weekday()]}</b><br>{dia.day} {MESES[dia.month-1]}"
-            f"<br><small>{turno or '-'}</small></div>",
+            f"<br><small>{turno_largo or '-'}</small></div>",
             unsafe_allow_html=True
         )
         # Selector
@@ -138,7 +138,7 @@ for i, dia in enumerate(dias):
         if nuevo and nuevo != turno_largo:
             cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
             guardar_y_commit(cal, f"Turno {dia} → {nuevo}")
-            st.rerun()
+            # st.rerun()
         # Mini lista de comentarios
         if comms:
             with st.expander("📝"):
