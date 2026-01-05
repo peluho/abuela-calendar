@@ -18,7 +18,7 @@ REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<toke
 # ---------- FUNCIONES ----------
 @st.cache_data
 def cargar_calendario():
-    ruta = "calendario.json"
+    ruta = "calendar.json"
     if not os.path.exists(ruta):
         return {}
     try:
@@ -27,9 +27,8 @@ def cargar_calendario():
             if not contenido:
                 return {}
             return json.loads(contenido)
-    except (json.JSONDecodeError, OSError) as e:
-        st.error(f"Error al leer calendario.json: {e}")
-        return {}
+    except (json.JSONDecodeError, OSError):
+        return {}          # <-- silencioso
 
 def guardar_y_commit(data, msg="Update calendar"):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
@@ -51,6 +50,10 @@ cal = cargar_calendario()
 dias = rango_visible()
 
 st.set_page_config(page_title="Cuidados abuela", layout="centered")
+
+if not cal and os.path.isfile(JSON_FILE):
+    st.warning("El archivo calendar.json estaba vacío o corrupto; se ha inicializado a {}.")
+    
 st.title("📅 Turnos cuidados abuela")
 st.markdown("Pulsa sobre el día para cambiar turno o dejar comentario.")
 
