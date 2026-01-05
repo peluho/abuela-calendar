@@ -18,18 +18,17 @@ REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<toke
 # ---------- FUNCIONES ----------
 @st.cache_data
 def cargar_calendario():
+    ruta = "calendario.json"
+    if not os.path.exists(ruta):
+        return {}
+    if os.path.getsize(ruta) == 0:
+        return {}
     try:
-        with open("calendar.json", "r") as f:
+        with open(ruta, "r", encoding="utf-8") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        # Si no existe o está vacío/mal formado, crear estructura básica
-        calendario_inicial = {
-            "cuidados": {},
-            "cuidadores": ["Persona1", "Persona2", "Persona3", "Otro"]
-        }
-        with open("calendar.json", "w") as f:
-            json.dump(calendario_inicial, f, indent=2)
-        return calendario_inicial
+    except json.JSONDecodeError:
+        st.error("El archivo calendario.json tiene un formato inválido.")
+        return {}
 
 def guardar_y_commit(data, msg="Update calendar"):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
