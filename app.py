@@ -2,8 +2,8 @@ import json, os
 from datetime import date, timedelta
 import streamlit as st
 from git import Repo
-import requests  # <-- IMPORTANTE
-from calendar import monthrange  # arriba, con los imports
+import requests
+from calendar import monthrange
 
 # ---------- CONFIG ----------
 JSON_FILE = "calendar.json"
@@ -16,13 +16,7 @@ MESES = "ene feb mar abr may jun jul ago sep oct nov dic".split()
 año = date.today().year
 FESTIVOS_JSON = f"festivos_{año}.json"
 
-st.set_page_config(page_title="Cuidados abuela", layout="centered")
-st.title("📅 Turnos cuidados abuela")
-st.markdown("Pulsa sobre el día para cambiar turno o dejar comentario.")
-
 # ---------- FUNCIONES ----------
-FESTIVOS_JSON = f"festivos_{año}.json"
-
 @st.cache_data(show_spinner=False)
 def cargar_festivos_españa():
     if os.path.exists(FESTIVOS_JSON):
@@ -55,16 +49,32 @@ def guardar_json(data):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def rango_visible():
-    hoy = date.today()
-    return [hoy + timedelta(days=i) for i in range(-5, 46)]
-
 # ---------- LÓGICA ----------
-cal  = cargar_calendario()
-dias = rango_visible()
+cal = cargar_calendario()
+hoy = date.today()
 
 # ---------- SIDEBAR ----------
 with st.sidebar:
+    st.header("📊 Estadísticas")
+    for i in range(3):
+        mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
+        ultimo_dia = monthrange(mes.year, mes.month)[1]
+        dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
+        contador = {nombre: 0 for nombre in CODIGOS}
+        fines = {nombre: 0 for nombre in CODIGOS}
+        for dia in dias_mes:
+            key = str(dia)
+            turno_corto = cal.get(key, {}).get("turno", "")
+            if turno_corto:
+                nombre = NOMBRES.get(turno_corto, "Otro")
+                contador[nombre] += 1
+                if dia.weekday() >= 5:
+                    fines[nombre] += 1
+        with st.expander(f"{MESES[mes.month-1].capitalize()} {mes.year}"):
+            for nombre in CODIGOS:
+                st.write(f"{nombre}: **{contador[nombre]}** días (**{fines[nombre]}** fin de semana)")
+
+    st.markdown("---")
     st.header("Añadir comentario")
     dia_sel = st.date_input("Día", date.today())
     txt = st.text_area("Comentario (opcional)")
@@ -93,87 +103,47 @@ with st.sidebar:
         st.success("Calendario reiniciado")
         st.rerun()
 
-# ---------- ESTADÍSTICAS (días totales por mes) ----------
+# ---------- VISTA MENSUAL EDITABLE ----------
 st.markdown("---")
-st.subheader("📈 Días totales por mes")
+st.subheader("📅 Mes actual editable")
 
-hoy = date.today()
-for i in range(3):
-    mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
-    ultimo_dia = monthrange(mes.year, mes.month)[1]
-    dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
-    contador_mes = {nombre: 0 for nombre in CODIGOS}
-    for dia in dias_mes:
+mes_actual = hoy.replace(day=1)
+ultimo_dia = monthrange(mes_actual.year, mes_actual.month)[1]
+dias_mes = [mes_actual.replace(day=d) for d in range(1, ultimo_dia + 1)]
+
+# Empieza en lunes
+inicio = mes_actual - timedelta(days=mes_actual.weekday())
+dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
+
+cols_mes = st.columns(7, gap="small")
+for dia in dias_visibles:
+    with cols_mes[dia.weekday()]:
+        es_mes = dia.month == mes_actual.month
         key = str(dia)
         turno_corto = cal.get(key, {}).get("turno", "")
-        if turno_corto:
-            nombre = NOMBRES.get(turno_corto, "Otro")
-            contador_mes[nombre] += 1
+        turno_largo = NOMBRES.get(turno_corto, "Otro")
+        color = COLORES.get(turno_largo, "#ffffff") if es_mes else "#eeeeee"
+        texto = f"{dia.day}" if es_mes else ""
+        es_festivo = dia.isoformat() in festivos
+        borde = "2px solid #ff4d4d" if es_festivo else "none"
 
-    st.write(f"**{MESES[mes.month-1].capitalize()} {mes.year}**")
-    for nombre, total in contador_mes.items():
-        st.write(f"{nombre}: {total} días")
+        st.markdown(
+            f"<div style='background:{color};border:{borde};padding:6px;border-radius:6px;"
+            f"text-align:center;font-size:1em'>"
+            f"{'🎉' if es_festivo else ''}{texto}</div>",
+            unsafe_allow_html=True
+        )
 
-# ---------- CUADRÍCULA RESPONSIVE ----------
-semanas = [dias[i:i+7] for i in range(0, len(dias), 7)]
-for sem in semanas:
-    cols = st.columns([1]*7, gap="small")
-    for dia, col in zip(sem, cols):
-        with col:
-            key = str(dia)
-            turno_corto = cal.get(key, {}).get("turno", "")
-            turno_largo = NOMBRES.get(turno_corto, "Otro")
-            comms = cal.get(key, {}).get("comentarios", [])
-
-            st.markdown(
-                f"<div style='background:{COLORES.get(turno_largo, '#ffffff')};"
-                f"padding:4px;border-radius:4px;text-align:center;font-size:0.75em'>"
-                f"<b>{DIA_SEM[dia.weekday()]}</b><br>{dia.day} {MESES[dia.month - 1]}"
-                f"<br><small>{turno_largo or '-'}</small></div>",
-                unsafe_allow_html=True
-            )
-
+        if es_mes:
             nuevo = st.selectbox("⇄", [""] + list(CODIGOS.keys()),
-                                 key=f"sel{key}",
+                                 key=f"sel_mes_{key}",
                                  format_func=lambda x: x if x else "-",
                                  label_visibility="collapsed")
             if nuevo and nuevo != turno_largo:
                 cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
                 guardar_json(cal)
 
-            if comms:
-                with st.expander("📝"):
-                    for c in comms:
-                        st.caption(c)
-
-# ---------- VISTA MENSUAL (3 meses, empieza en lunes) ----------
-st.markdown("---")
-st.subheader("📊 Resumen mensual")
-
-hoy = date.today()
-for i in range(3):
-    mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
-    st.write(f"**{MESES[mes.month-1].capitalize()} {mes.year}**")
-
-    # primer lunes de la semana que contiene el 1 del mes
-    primer_dia_mes = mes.weekday()  # 0=Lunes ... 6=Domingo
-    inicio = mes - timedelta(days=primer_dia_mes)
-    dias_mes_visibles = [inicio + timedelta(days=d) for d in range(42)]  # 6 semanas
-
-    cols_mes = st.columns(7, gap="small")
-    for dia in dias_mes_visibles:
-        with cols_mes[dia.weekday()]:
-            es_mes = dia.month == mes.month
-            key = str(dia)
-            turno_corto = cal.get(key, {}).get("turno", "")
-            turno_largo = NOMBRES.get(turno_corto, "Otro")
-            color = COLORES.get(turno_largo, "#ffffff") if es_mes else "#eeeeee"
-            texto = f"{dia.day}" if es_mes else ""
-            es_festivo = dia.isoformat() in festivos
-            color_fest = "#ff4d4d" if es_festivo else color
-            st.markdown(
-                f"<div style='background:{color_fest};padding:2px;border-radius:3px;"
-                f"text-align:center;font-size:0.7em'>"
-                f"{'🎉' if es_festivo else ''}{texto}</div>",
-                unsafe_allow_html=True
-            )
+        if es_mes and cal.get(key, {}).get("comentarios"):
+            with st.expander("📝"):
+                for c in cal[key]["comentarios"]:
+                    st.caption(c)
