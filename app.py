@@ -7,7 +7,7 @@ from git import Repo
 JSON_FILE = "calendar.json"
 CODIGOS   = {"Fer": "F", "Nines": "N", "Conchi": "C", "Otro": "Otro"}
 NOMBRES   = {v: k for k, v in CODIGOS.items()}
-COLORES   = {"Fer": "#8ac6d1", "Nines": "#ffb6b9", "Conchi": "#cae4db", "Otro": "#ffd36e"}
+COLORES   = {"Nines": "#8aa1d1", "Fer": "#ffb6b9", "Conchi": "#cae4d6", "Otro": "#ffd36e"}
 DIA_SEM   = list("LMXJVSD")
 MESES     = "ene feb mar abr may jun jul ago sep oct nov dic".split()
 
