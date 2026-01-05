@@ -68,6 +68,28 @@ with st.sidebar:
         st.success("Calendario reiniciado")
         st.rerun()
 
+# ---------- ESTADÍSTICAS ----------
+st.markdown("---")
+st.subheader("📈 Estadísticas")
+
+# contadores
+total_dias = len([d for d in dias if str(d) in cal])
+contador = {nombre: 0 for nombre in CODIGOS}
+fines = {nombre: 0 for nombre in CODIGOS}
+
+for dia in dias:
+    key = str(dia)
+    turno_corto = cal.get(key, {}).get("turno", "")
+    if not turno_corto:
+        continue
+    nombre = NOMBRES.get(turno_corto, "Otro")
+    contador[nombre] += 1
+    if dia.weekday() >= 5:  # sábado=5, domingo=6
+        fines[nombre] += 1
+
+for nombre in CODIGOS:
+    st.write(f"**{nombre}** → {contador[nombre]} días ({fines[nombre]} fin de semana)")    
+
 # ---------- CUADRÍCULA RESPONSIVE ----------
 semanas = [dias[i:i+7] for i in range(0, len(dias), 7)]
 for sem in semanas:
@@ -99,3 +121,25 @@ for sem in semanas:
                 with st.expander("📝"):
                     for c in comms:
                         st.caption(c)
+
+# ---------- VISTA MENSUAL ----------
+st.markdown("---")
+st.subheader("📊 Resumen mensual")
+
+hoy = date.today()
+meses = [hoy.replace(day=1) + timedelta(days=32*i) for i in range(3)]
+for mes in meses:
+    dias_mes = [mes.replace(day=d) for d in range(1, (mes + timedelta(days=32)).day) if (mes.replace(day=d)).month == mes.month]
+    st.write(f"**{MESES[mes.month-1].capitalize()} {mes.year}**")
+    cols_mes = st.columns(7, gap="small")
+    for dia, col in zip(dias_mes, cols_mes):
+        with col:
+            key = str(dia)
+            turno_corto = cal.get(key, {}).get("turno", "")
+            turno_largo = NOMBRES.get(turno_corto, "Otro")
+            st.markdown(
+                f"<div style='background:{COLORES.get(turno_largo, '#ffffff')};"
+                f"padding:2px;border-radius:3px;text-align:center;font-size:0.7em'>"
+                f"{dia.day}</div>",
+                unsafe_allow_html=True
+            )
