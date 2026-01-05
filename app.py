@@ -14,6 +14,7 @@ MESES       = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov"
 TOKEN       = st.secrets.get("GH_TOKEN", os.getenv("GH_TOKEN"))
 REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<token>@github.com/USER/REPO.git
 
+
 # ---------- FUNCIONES ----------
 @st.cache_data(show_spinner=False)
 def cargar_calendario():
@@ -37,6 +38,7 @@ def rango_visible():
     return [hoy + timedelta(days=i) for i in range(-15, 46)]
 
 # ---------- LÓGICA ----------
+cargar_calendario.clear()
 cal = cargar_calendario()
 dias = rango_visible()
 
