@@ -90,7 +90,7 @@ for i, dia in enumerate(dias):
         key = str(dia)
         turno = cal.get(key, {}).get("turno", "")
         comms = cal.get(key, {}).get("comentarios", [])
-        color = COLOURS.get(turno, "#ffffff")
+        color = COLORES.get(turno, "#ffffff")
 
         # Tarjetita
         st.markdown(
