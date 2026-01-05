@@ -68,27 +68,24 @@ with st.sidebar:
         st.success("Calendario reiniciado")
         st.rerun()
 
-# ---------- ESTADÍSTICAS ----------
+# ---------- ESTADÍSTICAS (días totales por mes) ----------
 st.markdown("---")
-st.subheader("📈 Estadísticas")
+st.subheader("📈 Días totales por mes")
 
-# contadores
-total_dias = len([d for d in dias if str(d) in cal])
-contador = {nombre: 0 for nombre in CODIGOS}
-fines = {nombre: 0 for nombre in CODIGOS}
+for i in range(3):
+    mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
+    dias_mes = [mes.replace(day=d) for d in range(1, 32) if (mes.replace(day=d)).month == mes.month]
+    contador_mes = {nombre: 0 for nombre in CODIGOS}
+    for dia in dias_mes:
+        key = str(dia)
+        turno_corto = cal.get(key, {}).get("turno", "")
+        if turno_corto:
+            nombre = NOMBRES.get(turno_corto, "Otro")
+            contador_mes[nombre] += 1
 
-for dia in dias:
-    key = str(dia)
-    turno_corto = cal.get(key, {}).get("turno", "")
-    if not turno_corto:
-        continue
-    nombre = NOMBRES.get(turno_corto, "Otro")
-    contador[nombre] += 1
-    if dia.weekday() >= 5:  # sábado=5, domingo=6
-        fines[nombre] += 1
-
-for nombre in CODIGOS:
-    st.write(f"**{nombre}** → {contador[nombre]} días ({fines[nombre]} fin de semana)")    
+    st.write(f"**{MESES[mes.month-1].capitalize()} {mes.year}**")
+    for nombre, total in contador_mes.items():
+        st.write(f"{nombre}: {total} días")
 
 # ---------- CUADRÍCULA RESPONSIVE ----------
 semanas = [dias[i:i+7] for i in range(0, len(dias), 7)]
@@ -122,24 +119,31 @@ for sem in semanas:
                     for c in comms:
                         st.caption(c)
 
-# ---------- VISTA MENSUAL ----------
+# ---------- VISTA MENSUAL (3 meses, empieza en lunes) ----------
 st.markdown("---")
 st.subheader("📊 Resumen mensual")
 
 hoy = date.today()
-meses = [hoy.replace(day=1) + timedelta(days=32*i) for i in range(3)]
-for mes in meses:
-    dias_mes = [mes.replace(day=d) for d in range(1, (mes + timedelta(days=32)).day) if (mes.replace(day=d)).month == mes.month]
+for i in range(3):
+    mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
     st.write(f"**{MESES[mes.month-1].capitalize()} {mes.year}**")
+
+    # primer lunes de la semana que contiene el 1 del mes
+    primer_dia_mes = mes.weekday()  # 0=Lunes ... 6=Domingo
+    inicio = mes - timedelta(days=primer_dia_mes)
+    dias_mes_visibles = [inicio + timedelta(days=d) for d in range(42)]  # 6 semanas
+
     cols_mes = st.columns(7, gap="small")
-    for dia, col in zip(dias_mes, cols_mes):
-        with col:
+    for dia in dias_mes_visibles:
+        with cols_mes[dia.weekday()]:
+            es_mes = dia.month == mes.month
             key = str(dia)
             turno_corto = cal.get(key, {}).get("turno", "")
             turno_largo = NOMBRES.get(turno_corto, "Otro")
+            color = COLORES.get(turno_largo, "#ffffff") if es_mes else "#eeeeee"
+            texto = f"{dia.day}" if es_mes else ""
             st.markdown(
-                f"<div style='background:{COLORES.get(turno_largo, '#ffffff')};"
-                f"padding:2px;border-radius:3px;text-align:center;font-size:0.7em'>"
-                f"{dia.day}</div>",
+                f"<div style='background:{color};padding:2px;border-radius:3px;"
+                f"text-align:center;font-size:0.7em'>{texto}</div>",
                 unsafe_allow_html=True
             )
