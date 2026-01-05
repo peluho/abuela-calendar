@@ -68,34 +68,34 @@ with st.sidebar:
         st.success("Calendario reiniciado")
         st.rerun()
 
-# ---------- CUADRÍCULA ----------
-st.markdown("---")
-# cols = st.columns(7)
-cols = st.columns([1]*7, gap="small")
-for i, dia in enumerate(dias):
-    with cols[i % 7]:
-        key = str(dia)
-        turno_corto = cal.get(key, {}).get("turno", "")
-        turno_largo = NOMBRES.get(turno_corto, "Otro")
-        comms = cal.get(key, {}).get("comentarios", [])
+# ---------- CUADRÍCULA RESPONSIVE ----------
+semanas = [dias[i:i+7] for i in range(0, len(dias), 7)]
+for sem in semanas:
+    cols = st.columns([1]*7, gap="small")
+    for dia, col in zip(sem, cols):
+        with col:
+            key = str(dia)
+            turno_corto = cal.get(key, {}).get("turno", "")
+            turno_largo = NOMBRES.get(turno_corto, "Otro")
+            comms = cal.get(key, {}).get("comentarios", [])
 
-        st.markdown(
-            f"<div style='background:{COLORES.get(turno_largo, '#ffffff')};"
-            f"padding:6px;border-radius:6px;text-align:center'>"
-            f"<b>{DIA_SEM[dia.weekday()]}</b><br>{dia.day} {MESES[dia.month - 1]}"
-            f"<br><small>{turno_largo or '-'}</small></div>",
-            unsafe_allow_html=True
-        )
+            st.markdown(
+                f"<div style='background:{COLORES.get(turno_largo, '#ffffff')};"
+                f"padding:4px;border-radius:4px;text-align:center;font-size:0.75em'>"
+                f"<b>{DIA_SEM[dia.weekday()]}</b><br>{dia.day} {MESES[dia.month - 1]}"
+                f"<br><small>{turno_largo or '-'}</small></div>",
+                unsafe_allow_html=True
+            )
 
-        nuevo = st.selectbox("Cambiar", [""] + list(CODIGOS.keys()),
-                             key=f"sel{key}",
-                             format_func=lambda x: x if x else "-",
-                             label_visibility="collapsed")
-        if nuevo and nuevo != turno_largo:
-            cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
-            guardar_json(cal)
+            nuevo = st.selectbox("⇄", [""] + list(CODIGOS.keys()),
+                                 key=f"sel{key}",
+                                 format_func=lambda x: x if x else "-",
+                                 label_visibility="collapsed")
+            if nuevo and nuevo != turno_largo:
+                cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
+                guardar_json(cal)
 
-        if comms:
-            with st.expander("📝"):
-                for c in comms:
-                    st.caption(c)
+            if comms:
+                with st.expander("📝"):
+                    for c in comms:
+                        st.caption(c)
