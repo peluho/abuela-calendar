@@ -2,20 +2,44 @@ import json, os
 from datetime import date, timedelta
 import streamlit as st
 from git import Repo
+import requests  # <-- IMPORTANTE
 
 # ---------- CONFIG ----------
 JSON_FILE = "calendar.json"
-CODIGOS   = {"Fer": "F", "Nines": "N", "Conchi": "C", "Otro": "Otro"}
-NOMBRES   = {v: k for k, v in CODIGOS.items()}
-COLORES   = {"Nines": "#8aa1d1", "Fer": "#ffb6b9", "Conchi": "#cae4d6", "Otro": "#ffd36e"}
-DIA_SEM   = list("LMXJVSD")
-MESES     = "ene feb mar abr may jun jul ago sep oct nov dic".split()
+CODIGOS = {"Fer": "F", "Nines": "N", "Conchi": "C", "Otro": "Otro"}
+NOMBRES = {v: k for k, v in CODIGOS.items()}
+COLORES = {"Nines": "#8aa1d1", "Fer": "#ffb6b9", "Conchi": "#cae4d6", "Otro": "#ffd36e"}
+DIA_SEM = list("LMXJVSD")
+MESES = "ene feb mar abr may jun jul ago sep oct nov dic".split()
+
+año = date.today().year
+FESTIVOS_JSON = f"festivos_{año}.json"
 
 st.set_page_config(page_title="Cuidados abuela", layout="centered")
 st.title("📅 Turnos cuidados abuela")
 st.markdown("Pulsa sobre el día para cambiar turno o dejar comentario.")
 
 # ---------- FUNCIONES ----------
+FESTIVOS_JSON = f"festivos_{año}.json"
+
+@st.cache_data(show_spinner=False)
+def cargar_festivos_españa():
+    if os.path.exists(FESTIVOS_JSON):
+        with open(FESTIVOS_JSON, encoding="utf-8") as f:
+            return set(json.load(f))
+    url = f"https://date.nager.at/api/v3/publicholidays/{año}/ES"
+    try:
+        res = requests.get(url, timeout=5)
+        res.raise_for_status()
+        dias = [dt["date"] for dt in res.json()]
+        with open(FESTIVOS_JSON, "w", encoding="utf-8") as f:
+            json.dump(dias, f)
+        return set(dias)
+    except Exception:
+        return set()
+
+festivos = cargar_festivos_españa()
+
 @st.cache_data
 def cargar_calendario():
     if not os.path.exists(JSON_FILE):
@@ -142,8 +166,11 @@ for i in range(3):
             turno_largo = NOMBRES.get(turno_corto, "Otro")
             color = COLORES.get(turno_largo, "#ffffff") if es_mes else "#eeeeee"
             texto = f"{dia.day}" if es_mes else ""
+            es_festivo = dia.isoformat() in festivos
+            color_fest = "#ff4d4d" if es_festivo else color
             st.markdown(
-                f"<div style='background:{color};padding:2px;border-radius:3px;"
-                f"text-align:center;font-size:0.7em'>{texto}</div>",
+                f"<div style='background:{color_fest};padding:2px;border-radius:3px;"
+                f"text-align:center;font-size:0.7em'>"
+                f"{'🎉' if es_festivo else ''}{texto}</div>",
                 unsafe_allow_html=True
             )
