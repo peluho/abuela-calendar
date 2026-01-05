@@ -16,8 +16,8 @@ REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<toke
 
 st.set_page_config(page_title="Cuidados abuela", layout="centered")
 st.title("📅 Turnos cuidados abuela")
-st.write("TOKEN existe:", bool(st.secrets.get("GH_TOKEN")))
-st.write("REPO_URL existe:", bool(st.secrets.get("REPO_URL")))
+# st.write("TOKEN existe:", bool(st.secrets.get("GH_TOKEN")))
+# st.write("REPO_URL existe:", bool(st.secrets.get("REPO_URL")))
 
 # ---------- FUNCIONES ----------
 @st.cache_data
@@ -41,7 +41,9 @@ def guardar_y_commit(data, msg="Update calendar"):
     repo.git.add(JSON_FILE)
     repo.index.commit(msg)
     origin = repo.remote(name="origin")
-    origin.push()
+    # origin.push()
+    url_con_token = st.secrets["REPO_URL"]
+    repo.git.push(url_con_token, "main")   # main o la rama que use
 
 def rango_visible():
     hoy = date.today()
