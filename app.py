@@ -40,16 +40,28 @@ def guardar_json(data):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def guardar_y_commit(data, msg="Update calendar"):
-    with open(JSON_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    repo = Repo(REPO_PATH)
-    repo.git.add(JSON_FILE)
-    repo.index.commit(msg)
-    origin = repo.remote(name="origin")
+# def guardar_y_commit(data, msg="Update calendar"):
+#     with open(JSON_FILE, "w", encoding="utf-8") as f:
+#         json.dump(data, f, ensure_ascii=False, indent=2)
+#     repo = Repo(REPO_PATH)
+#     repo.git.add(JSON_FILE)
+#     repo.index.commit(msg)
+#     origin = repo.remote(name="origin")
     # origin.push()
     # url_con_token = st.secrets["REPO_URL"]
     # repo.git.push(url_con_token, "main")   # main o la rama que use
+
+def guardar_y_commit(data, msg="Update calendar"):
+    guardar_json(data)
+    repo = Repo(REPO_PATH)
+
+    # <-- AÑADE ESTAS DOS LÍNEAS -->
+    with repo.config_writer() as cfg:
+        cfg.set_value("user", "name", "abuela-bot")
+        cfg.set_value("user", "email", "abuela@bot.local")
+
+    repo.git.add(JSON_FILE)
+    repo.index.commit(msg)
 
 def rango_visible():
     hoy = date.today()
