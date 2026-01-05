@@ -3,6 +3,7 @@ from datetime import date, timedelta
 import streamlit as st
 from git import Repo
 import requests  # <-- IMPORTANTE
+from calendar import monthrange  # arriba, con los imports
 
 # ---------- CONFIG ----------
 JSON_FILE = "calendar.json"
@@ -99,7 +100,8 @@ st.subheader("📈 Días totales por mes")
 hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
-    dias_mes = [mes.replace(day=d) for d in range(1, 32) if (mes.replace(day=d)).month == mes.month]
+    ultimo_dia = monthrange(mes.year, mes.month)[1]
+    dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
     contador_mes = {nombre: 0 for nombre in CODIGOS}
     for dia in dias_mes:
         key = str(dia)
