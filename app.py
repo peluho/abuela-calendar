@@ -21,13 +21,14 @@ def cargar_calendario():
     ruta = "calendario.json"
     if not os.path.exists(ruta):
         return {}
-    if os.path.getsize(ruta) == 0:
-        return {}
     try:
         with open(ruta, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except json.JSONDecodeError:
-        st.error("El archivo calendario.json tiene un formato inválido.")
+            contenido = f.read().strip()
+            if not contenido:
+                return {}
+            return json.loads(contenido)
+    except (json.JSONDecodeError, OSError) as e:
+        st.error(f"Error al leer calendario.json: {e}")
         return {}
 
 def guardar_y_commit(data, msg="Update calendar"):
@@ -54,6 +55,7 @@ st.title("📅 Turnos cuidados abuela")
 st.markdown("Pulsa sobre el día para cambiar turno o dejar comentario.")
 
 # Formulario lateral para nuevos comentarios
+# ---------- SIDEBAR ----------
 with st.sidebar:
     st.header("Añadir comentario")
     dia_sel = st.date_input("Día", date.today())
@@ -64,6 +66,16 @@ with st.sidebar:
         cal[key].setdefault("comentarios", []).append(txt)
         guardar_y_commit(cal, f"Comentario {dia_sel}")
         st.success("Guardado")
+        st.rerun()
+
+    st.markdown("---")  # separador visual
+    if st.button("Reiniciar calendario"):
+        # vaciamos el dict y sobrescribimos el archivo
+        cal.clear()
+        with open(JSON_FILE, "w", encoding="utf-8") as f:
+            json.dump({}, f)
+        guardar_y_commit(cal, "Reinicio completo del calendario")
+        st.success("Calendario reiniciado")
         st.rerun()
 
 # Tabla de días
