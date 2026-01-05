@@ -14,6 +14,9 @@ MESES       = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov"
 TOKEN       = st.secrets.get("GH_TOKEN", os.getenv("GH_TOKEN"))
 REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<token>@github.com/USER/REPO.git
 
+st.set_page_config(page_title="Cuidados abuela", layout="centered")
+st.title("📅 Turnos cuidados abuela")
+
 
 # ---------- FUNCIONES ----------
 @st.cache_data
@@ -45,16 +48,14 @@ def rango_visible():
     return [hoy + timedelta(days=i) for i in range(-15, 46)]
 
 # ---------- LÓGICA ----------
-cargar_calendario.clear()
+# cargar_calendario.clear()
 cal = cargar_calendario()
 dias = rango_visible()
 
-st.set_page_config(page_title="Cuidados abuela", layout="centered")
 
-if not cal and os.path.isfile(JSON_FILE):
-    st.warning("El archivo calendar.json estaba vacío o corrupto; se ha inicializado a {}.")
-    
-st.title("📅 Turnos cuidados abuela")
+# if not cal and os.path.isfile(JSON_FILE):
+    # st.warning("El archivo calendar.json estaba vacío o corrupto; se ha inicializado a {}.")
+
 st.markdown("Pulsa sobre el día para cambiar turno o dejar comentario.")
 
 # Formulario lateral para nuevos comentarios
