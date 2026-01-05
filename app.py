@@ -16,7 +16,8 @@ REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<toke
 
 st.set_page_config(page_title="Cuidados abuela", layout="centered")
 st.title("📅 Turnos cuidados abuela")
-
+st.write("TOKEN existe:", bool(st.secrets.get("GH_TOKEN")))
+st.write("REPO_URL existe:", bool(st.secrets.get("REPO_URL")))
 
 # ---------- FUNCIONES ----------
 @st.cache_data
