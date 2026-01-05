@@ -6,10 +6,12 @@ from git import Repo
 # ---------- CONFIG ----------
 REPO_PATH   = "."               # estamos dentro del repo
 JSON_FILE   = "calendar.json"
-COLORES     = {"F":"#8ac6d1","N":"#ffb6b9","C":"#cae4db","Otro":"#ffd36e"}
-PERSONAS    = ["F","N","C","Otro"]
+PERSONAS    = ["Fer", "Nines", "Conchi", "Otro"]
+COLORES     = {"Fer":"#8ac6d1","Nines":"#ffb6b9","Conchi":"#cae4db","Otro":"#ffd36e"}
 DIA_SEM     = ["L","M","X","J","V","S","D"]
 MESES       = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"]
+CODIGOS     = {"Fer":"F", "Nines":"N", "Conchi":"C", "Otro":"Otro"}  # largo → corto
+NOMBRES     = {v:k for k,v in CODIGOS.items()}                        # corto → largo
 # Clave GitHub (máquina) → la guardamos en Secrets de Streamlit
 TOKEN       = st.secrets.get("GH_TOKEN", os.getenv("GH_TOKEN"))
 REPO_URL    = st.secrets.get("REPO_URL", os.getenv("REPO_URL"))  # https://<token>@github.com/USER/REPO.git
@@ -33,6 +35,10 @@ def cargar_calendario():
             return json.loads(contenido)
     except (json.JSONDecodeError, OSError):
         return {}          # <-- silencioso
+    
+def guardar_json(data):
+    with open(JSON_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 def guardar_y_commit(data, msg="Update calendar"):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
@@ -42,8 +48,8 @@ def guardar_y_commit(data, msg="Update calendar"):
     repo.index.commit(msg)
     origin = repo.remote(name="origin")
     # origin.push()
-    url_con_token = st.secrets["REPO_URL"]
-    repo.git.push(url_con_token, "main")   # main o la rama que use
+    # url_con_token = st.secrets["REPO_URL"]
+    # repo.git.push(url_con_token, "main")   # main o la rama que use
 
 def rango_visible():
     hoy = date.today()
@@ -75,6 +81,15 @@ with st.sidebar:
         st.success("Guardado")
         st.rerun()
 
+    if st.button("🔒 Subir cambios a GitHub"):
+        url_con_token = st.secrets["REPO_URL"]
+        try:
+            repo = Repo(REPO_PATH)
+            repo.git.push(url_con_token, "main")
+            st.success("✅ Cambios subidos")
+        except Exception as e:
+            st.error(f"Error al subir: {e}")
+
     st.markdown("---")  # separador visual
     if st.button("Reiniciar calendario"):
         # vaciamos el dict y sobrescribimos el archivo
@@ -93,7 +108,9 @@ for i, dia in enumerate(dias):
         key = str(dia)
         turno = cal.get(key, {}).get("turno", "")
         comms = cal.get(key, {}).get("comentarios", [])
-        color = COLORES.get(turno, "#ffffff")
+        turno_corto = cal.get(key, {}).get("turno", "")
+        turno_largo = NOMBRES.get(turno_corto, "Otro")
+        color       = COLORES.get(turno_largo, "#ffffff")
 
         # Tarjetita
         st.markdown(
@@ -103,11 +120,11 @@ for i, dia in enumerate(dias):
             unsafe_allow_html=True
         )
         # Selector
-        nuevo = st.selectbox("Cambiar", [""]+PERSONAS, key=f"sel{key}",
-                             format_func=lambda x: x if x else "-",
-                             label_visibility="collapsed")
-        if nuevo and nuevo != turno:
-            cal.setdefault(key, {})["turno"] = nuevo
+        nuevo = st.selectbox("Cambiar", [""]+list(CODIGOS.keys()), key=f"sel{key}",
+                     format_func=lambda x: x if x else "-",
+                     label_visibility="collapsed")
+        if nuevo and nuevo != turno_largo:
+            cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
             guardar_y_commit(cal, f"Turno {dia} → {nuevo}")
             st.rerun()
         # Mini lista de comentarios
