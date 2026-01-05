@@ -96,6 +96,7 @@ with st.sidebar:
 st.markdown("---")
 st.subheader("📈 Días totales por mes")
 
+hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
     dias_mes = [mes.replace(day=d) for d in range(1, 32) if (mes.replace(day=d)).month == mes.month]
