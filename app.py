@@ -103,47 +103,62 @@ with st.sidebar:
         st.success("Calendario reiniciado")
         st.rerun()
 
-# ---------- VISTA MENSUAL EDITABLE ----------
+# ---------- LEYENDA ----------
 st.markdown("---")
-st.subheader("📅 Mes actual editable")
-
-mes_actual = hoy.replace(day=1)
-ultimo_dia = monthrange(mes_actual.year, mes_actual.month)[1]
-dias_mes = [mes_actual.replace(day=d) for d in range(1, ultimo_dia + 1)]
-
-# Empieza en lunes
-inicio = mes_actual - timedelta(days=mes_actual.weekday())
-dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
-
-cols_mes = st.columns(7, gap="small")
-for dia in dias_visibles:
-    with cols_mes[dia.weekday()]:
-        es_mes = dia.month == mes_actual.month
-        key = str(dia)
-        turno_corto = cal.get(key, {}).get("turno", "")
-        turno_largo = NOMBRES.get(turno_corto, "Otro")
-        color = COLORES.get(turno_largo, "#ffffff") if es_mes else "#eeeeee"
-        texto = f"{dia.day}" if es_mes else ""
-        es_festivo = dia.isoformat() in festivos
-        borde = "2px solid #ff4d4d" if es_festivo else "none"
-
+st.subheader("📅 Meses editables")
+col_leyenda = st.columns(len(CODIGOS))
+for i, (nombre, cod) in enumerate(CODIGOS.items()):
+    with col_leyenda[i]:
         st.markdown(
-            f"<div style='background:{color};border:{borde};padding:6px;border-radius:6px;"
-            f"text-align:center;font-size:1em'>"
-            f"{'🎉' if es_festivo else ''}{texto}</div>",
+            f"<div style='background:{COLORES[nombre]};padding:4px;border-radius:4px;"
+            f"text-align:center;color:#000;font-weight:bold'>"
+            f"{nombre}</div>",
             unsafe_allow_html=True
         )
 
-        if es_mes:
-            nuevo = st.selectbox("⇄", [""] + list(CODIGOS.keys()),
-                                 key=f"sel_mes_{key}",
-                                 format_func=lambda x: x if x else "-",
-                                 label_visibility="collapsed")
-            if nuevo and nuevo != turno_largo:
-                cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
-                guardar_json(cal)
+# ---------- 3 MESES EDITABLES (empiezan en lunes) ----------
+hoy = date.today()
+for i in range(3):
+    mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
+    st.write(f"### {MESES[mes.month-1].capitalize()} {mes.year}")
+    # encabezado días
+    encabezado = st.columns(7, gap="small")
+    for d, col in zip(DIA_SEM, encabezado):
+        with col:
+            st.markdown(f"**{d}**")
 
-        if es_mes and cal.get(key, {}).get("comentarios"):
-            with st.expander("📝"):
-                for c in cal[key]["comentarios"]:
-                    st.caption(c)
+    # días del mes
+    inicio = mes - timedelta(days=mes.weekday())
+    dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
+    cols_mes = st.columns(7, gap="small")
+    for dia in dias_visibles:
+        with cols_mes[dia.weekday()]:
+            es_mes = dia.month == mes.month
+            key = str(dia)
+            turno_corto = cal.get(key, {}).get("turno", "")
+            turno_largo = NOMBRES.get(turno_corto, "Otro")
+            color = COLORES.get(turno_largo, "#ffffff") if es_mes else "#eeeeee"
+            texto = f"{dia.day}" if es_mes else ""
+            es_festivo = dia.isoformat() in festivos
+            borde = "2px solid #ff4d4d" if es_festivo else "none"
+
+            st.markdown(
+                f"<div style='background:{color};border:{borde};padding:6px;border-radius:6px;"
+                f"text-align:center;font-size:1em'>"
+                f"{'🎉' if es_festivo else ''}{texto}</div>",
+                unsafe_allow_html=True
+            )
+
+            if es_mes:
+                nuevo = st.selectbox("⇄", [""] + list(CODIGOS.keys()),
+                                     key=f"sel_mes_{mes.month}_{dia.day}",
+                                     format_func=lambda x: x if x else "-",
+                                     label_visibility="collapsed")
+                if nuevo and nuevo != turno_largo:
+                    cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
+                    guardar_json(cal)
+
+            if es_mes and cal.get(key, {}).get("comentarios"):
+                with st.expander("📝"):
+                    for c in cal[key]["comentarios"]:
+                        st.caption(c)
