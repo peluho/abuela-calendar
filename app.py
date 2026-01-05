@@ -32,7 +32,7 @@ def guardar_json(data):
 
 def rango_visible():
     hoy = date.today()
-    return [hoy + timedelta(days=i) for i in range(-15, 46)]
+    return [hoy + timedelta(days=i) for i in range(-5, 46)]
 
 # ---------- LÓGICA ----------
 cal  = cargar_calendario()
@@ -70,7 +70,8 @@ with st.sidebar:
 
 # ---------- CUADRÍCULA ----------
 st.markdown("---")
-cols = st.columns(7)
+# cols = st.columns(7)
+cols = st.columns([1]*7, gap="small")
 for i, dia in enumerate(dias):
     with cols[i % 7]:
         key = str(dia)
