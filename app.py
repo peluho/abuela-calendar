@@ -98,24 +98,41 @@ with st.sidebar:
         for nombre in CODIGOS:
             st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-        # ---------- EXPORTAR CSV ----------
+            # ---------- EXPORTAR CALENDARIO COMPLETO ----------
     st.markdown("---")
-    st.subheader("📄 Exportar datos")
+    st.subheader("📄 Exportar calendario")
 
-    if st.button("Descargar CSV mensual"):
+    if st.button("Descargar calendario mensual"):
         mes = hoy.replace(day=1)
         ultimo_dia = monthrange(mes.year, mes.month)[1]
         dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
-        total_mes = contar_por_tipo(dias_mes, lambda _: True)
-        fines_mes = contar_por_tipo(dias_mes, lambda d: d.weekday() >= 5)
-        fest_mes = contar_por_tipo(dias_mes, lambda d: d.isoformat() in festivos)
 
-        csv_lines = ["Persona,Días,Fin de semana,Festivos"]
-        for nombre in CODIGOS:
-            csv_lines.append(f"{nombre},{total_mes[nombre]},{fines_mes[nombre]},{fest_mes[nombre]}")
+        # HTML bonito
+        html_lines = [f"<h2>Calendario {MESES[mes.month-1].capitalize()} {mes.year}</h2><table border='1' style='border-collapse:collapse;width:100%;text-align:center;'>"]
+        html_lines.append("<tr>" + "".join(f"<th>{d}</th>" for d in DIA_SEM) + "</tr>")
 
-        csv_str = "\n".join(csv_lines)
-        st.sidebar.download_button("📥 Descargar CSV", data=csv_str, file_name=f"cuidados_{mes.month}_{mes.year}.csv", mime="text/csv")
+        inicio = mes - timedelta(days=mes.weekday())
+        dias_vis = [inicio + timedelta(days=d) for d in range(42)]
+        filas = [dias_vis[i:i+7] for i in range(0, 42, 7)]
+
+        for sem in filas:
+            html_lines.append("<tr>")
+            for dia in sem:
+                es_mes = dia.month == mes.month
+                key = str(dia)
+                turno = cal.get(key, {}).get("turno", "")
+                nombre = NOMBRES.get(turno, "Otro")
+                color = COLORES.get(nombre, "#ffffff") if es_mes else "#eeeeee"
+                texto = f"{dia.day}" if es_mes else ""
+                inicial = CODIGOS[nombre] if es_mes and turno else ""
+                html_lines.append(f"<td style='background:{color};width:14%;height:60px;'>"
+                                  f"<div style='font-size:0.8em;'>{texto}</div>"
+                                  f"<div style='font-weight:bold;'>{inicial}</div></td>")
+            html_lines.append("</tr>")
+        html_lines.append("</table>")
+
+        html_str = "\n".join(html_lines)
+        st.sidebar.download_button("📥 Descargar HTML", data=html_str, file_name=f"calendario_{mes.month}_{mes.year}.html", mime="text/html")
 
         st.markdown("---")
         st.header("Añadir comentario")
@@ -282,10 +299,12 @@ fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
 for nombre in CODIGOS:
     st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# gráficos de quesitos (sin matplotlib)
+# ---------- GRÁFICOS (sin matplotlib) ----------
 st.subheader("Gráficos")
+# quesito año
+año_actual = hoy.year
+dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
+total_año = contar_por_tipo(dias_año, lambda _: True)
 df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
-fig, ax = plt.subplots()
-ax.pie(df_año["Días"], labels=df_año["Persona"], autopct='%1.1f%%', colors=[COLORES[n] for n in CODIGOS])
-ax.set_title(f"Distribución {año_actual}")
-st.pyplot(fig)
+st.pyplot(st.pyplot.figure(figsize=(4, 4)))
+st.write(df_año.set_index("Persona").plot.pie(y="Días", colors=[COLORES[n] for n in CODIGOS], autopct='%1.1f%%').figure)
