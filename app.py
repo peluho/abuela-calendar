@@ -116,7 +116,7 @@ for i, (nombre, cod) in enumerate(CODIGOS.items()):
             unsafe_allow_html=True
         )
 
-# ---------- 3 MESES EDITABLES ( día + inicial + cerco color) ----------
+# ---------- 3 MESES EDITABLES (celda bonita + selector debajo) ----------
 hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
@@ -143,7 +143,7 @@ for i in range(3):
             guardar_json(cal)
             st.session_state[sel_key] = None
 
-    # pintamos
+    # pintamos fila a fila
     for semana in filas:
         cols = st.columns(7, gap="small")
         for dia, col in zip(semana, cols):
@@ -160,12 +160,23 @@ for i in range(3):
                 cerco_color = f"2px solid {color}" if es_mes else "none"
 
                 if es_mes:
-                    label = f"{texto} {inicial}".strip()
+                    # celda bonita
+                    st.markdown(
+                        f"<div style='background:{color};border:{cerco_color};border-top:{borde_fest};"
+                        f"padding:6px;border-radius:6px;text-align:center;font-size:1em;"
+                        f"min-height:48px;display:flex;flex-direction:column;justify-content:space-between;'>"
+                        f"<div style='font-size:0.8em;color:#333'>{texto}</div>"
+                        f"<div style='font-weight:bold;color:#000;font-size:1.1em'>{inicial}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True
+                    )
+                    # selector debajo, mismo orden
+                    sel_key = f"sel_mes_{mes.month}_{dia.day}"
                     nuevo = st.selectbox(
-                        label,
+                        "⇄",  # texto corto para no romper
                         options=list(CODIGOS.keys()),
                         index=list(CODIGOS.keys()).index(turno_largo),
-                        key=f"sel_mes_{mes.month}_{dia.day}",
+                        key=sel_key,
                         format_func=lambda x: x,
                         label_visibility="collapsed"
                     )
