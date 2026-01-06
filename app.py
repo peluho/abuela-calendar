@@ -116,13 +116,12 @@ for i, (nombre, cod) in enumerate(CODIGOS.items()):
             unsafe_allow_html=True
         )
 
-# ---------- 3 MESES EDITABLES (color+inicial del calendario) ----------
+# ---------- 3 MESES EDITABLES ( día + inicial + cerco color) ----------
 hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
     st.write(f"### {MESES[mes.month-1].capitalize()} {mes.year}")
 
-    # encabezado
     hdr = st.columns(7, gap="small")
     for d, col in zip(DIA_SEM, hdr):
         with col:
@@ -132,7 +131,7 @@ for i in range(3):
     dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
     filas = [dias_visibles[i:i+7] for i in range(0, 42, 7)]
 
-    # pre-cargamos cambios antes de pintar
+    # pre-cargamos cambios
     for dia in dias_visibles:
         es_mes = dia.month == mes.month
         if not es_mes:
@@ -142,9 +141,9 @@ for i in range(3):
         if st.session_state.get(sel_key):
             cal.setdefault(key, {})["turno"] = CODIGOS[st.session_state[sel_key]]
             guardar_json(cal)
-            st.session_state[sel_key] = None  # reset
+            st.session_state[sel_key] = None
 
-    # pintamos fila a fila
+    # pintamos
     for semana in filas:
         cols = st.columns(7, gap="small")
         for dia, col in zip(semana, cols):
@@ -157,16 +156,16 @@ for i in range(3):
                 texto = f"{dia.day}" if es_mes else ""
                 inicial = CODIGOS[turno_largo] if es_mes and turno_corto else ""
                 es_festivo = dia.isoformat() in festivos
-                borde = "2px solid #ff4d4d" if es_festivo else "none"
+                borde_fest = "2px solid #ff4d4d" if es_festivo else "none"
+                cerco_color = f"2px solid {color}" if es_mes else "none"
 
                 if es_mes:
-                    # desplegable *con* el valor guardado
-                    sel_key = f"sel_mes_{mes.month}_{dia.day}"
+                    label = f"{texto} {inicial}".strip()
                     nuevo = st.selectbox(
-                        label=f"{texto} {inicial}",
+                        label,
                         options=list(CODIGOS.keys()),
                         index=list(CODIGOS.keys()).index(turno_largo),
-                        key=sel_key,
+                        key=f"sel_mes_{mes.month}_{dia.day}",
                         format_func=lambda x: x,
                         label_visibility="collapsed"
                     )
