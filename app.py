@@ -299,17 +299,20 @@ fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
 for nombre in CODIGOS:
     st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# ---------- GRÁFICOS (quesito sin matplotlib) ----------
+# ---------- GRÁFICOS (quesito sin matplotlib ni pandas.plot) ----------
 st.subheader("📊 Gráficos")
 
+# datos
 año_actual = hoy.year
 dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
 total_año = contar_por_tipo(dias_año, lambda _: True)
-df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
+valores = [total_año[n] for n in CODIGOS]
+etiquetas = list(CODIGOS.keys())
+colores = [COLORES[n] for n in CODIGOS]
 
-# quesito con pandas + st.pyplot
-fig = df_año.set_index("Persona").plot.pie(y="Días",
-                                           colors=[COLORES[n] for n in CODIGOS],
-                                           autopct='%1.1f%%',
-                                           figsize=(4, 4)).figure
+# quesito con st.pyplot
+import math
+fig, ax = st.pyplot()
+ax.pie(valores, labels=etiquetas, autopct='%1.1f%%', colors=colores)
+ax.set_title(f"Distribución {año_actual}")
 st.pyplot(fig)
