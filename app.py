@@ -2,6 +2,7 @@ import json, os
 from datetime import date, timedelta
 import streamlit as st
 from git import Repo
+import plotly.express as px 
 import requests
 from calendar import monthrange
 
@@ -299,20 +300,17 @@ fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
 for nombre in CODIGOS:
     st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# ---------- GRÁFICOS (quesito sin matplotlib ni pandas.plot) ----------
+# ---------- GRÁFICOS (quesito con Plotly) ----------
 st.subheader("📊 Gráficos")
 
-# datos
 año_actual = hoy.year
 dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
 total_año = contar_por_tipo(dias_año, lambda _: True)
-valores = [total_año[n] for n in CODIGOS]
-etiquetas = list(CODIGOS.keys())
-colores = [COLORES[n] for n in CODIGOS]
+df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
 
-# quesito con st.pyplot
-import math
-fig, ax = st.pyplot()
-ax.pie(valores, labels=etiquetas, autopct='%1.1f%%', colors=colores)
-ax.set_title(f"Distribución {año_actual}")
-st.pyplot(fig)
+fig = px.pie(df_año, values="Días", names="Persona",
+             title=f"Distribución {año_actual}",
+             color="Persona",
+             color_discrete_map=COLORES,
+             hole=0.4)
+st.plotly_chart(fig, use_container_width=True)
