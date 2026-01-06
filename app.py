@@ -2,7 +2,7 @@ import json, os
 from datetime import date, timedelta
 import streamlit as st
 from git import Repo
-import plotly.express as px 
+# import plotly.express as px 
 import requests
 from calendar import monthrange
 
