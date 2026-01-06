@@ -54,54 +54,151 @@ cal = cargar_calendario()
 hoy = date.today()
 
 # ---------- SIDEBAR ----------
+# ---------- ESTADÍSTICAS REFINADAS + GRÁFICOS ----------
+import matplotlib.pyplot as plt
+import pandas as pd
+from calendar import monthrange
+
+def contar_por_tipo(dias, es_tipo):
+    cont = {nombre: 0 for nombre in CODIGOS}
+    for dia in dias:
+        key = str(dia)
+        turno = cal.get(key, {}).get("turno", "")
+        if turno:
+            nombre = NOMBRES.get(turno, "Otro")
+            if es_tipo(dia):
+                cont[nombre] += 1
+    return cont
+
+# ---------- SIDEBAR ESTADÍSTICAS ----------
 with st.sidebar:
     st.header("📊 Estadísticas")
+
+    # meses
     for i in range(3):
         mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
         ultimo_dia = monthrange(mes.year, mes.month)[1]
         dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
-        contador = {nombre: 0 for nombre in CODIGOS}
-        fines = {nombre: 0 for nombre in CODIGOS}
-        for dia in dias_mes:
-            key = str(dia)
-            turno_corto = cal.get(key, {}).get("turno", "")
-            if turno_corto:
-                nombre = NOMBRES.get(turno_corto, "Otro")
-                contador[nombre] += 1
-                if dia.weekday() >= 5:
-                    fines[nombre] += 1
+        total_mes = contar_por_tipo(dias_mes, lambda _: True)
+        fines_mes = contar_por_tipo(dias_mes, lambda d: d.weekday() >= 5)
+        fest_mes = contar_por_tipo(dias_mes, lambda d: d.isoformat() in festivos)
+
         with st.expander(f"{MESES[mes.month-1].capitalize()} {mes.year}"):
             for nombre in CODIGOS:
-                st.write(f"{nombre}: **{contador[nombre]}** días (**{fines[nombre]}** fin de semana)")
+                st.write(f"{nombre}: **{total_mes[nombre]}** días | **{fines_mes[nombre]}** finde | **{fest_mes[nombre]}** festivos")
 
+    # año completo
+    año_actual = hoy.year
+    dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
+    total_año = contar_por_tipo(dias_año, lambda _: True)
+    fines_año = contar_por_tipo(dias_año, lambda d: d.weekday() >= 5)
+    fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
+
+    with st.expander(f"Año {año_actual}"):
+        for nombre in CODIGOS:
+            st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
+
+    # ---------- EXPORTAR PDF ----------
     st.markdown("---")
-    st.header("Añadir comentario")
-    dia_sel = st.date_input("Día", date.today())
-    txt = st.text_area("Comentario (opcional)")
-    if st.button("Guardar comentario"):
-        key = str(dia_sel)
-        cal.setdefault(key, {}).setdefault("comentarios", []).append(txt)
-        guardar_json(cal)
-        st.success("Guardado")
+    st.subheader("📄 Exportar PDF")
 
-    if st.button("🔒 Subir cambios a GitHub"):
-        try:
-            repo = Repo(".")
-            with repo.config_writer() as cfg:
-                cfg.set_value("user", "name", "abuela-bot")
-                cfg.set_value("user", "email", "abuela@bot.local")
-            repo.git.add(JSON_FILE)
-            repo.index.commit("Update calendar")
-            repo.git.push(st.secrets["REPO_URL"], "main")
-            st.success("✅ Cambios subidos")
-        except Exception as e:
-            st.error(f"Error al subir: {e}")
+    if st.button("Generar informe mensual"):
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        import io
 
-    if st.button("Reiniciar calendario"):
-        cal.clear()
-        guardar_json({})
-        st.success("Calendario reiniciado")
-        st.rerun()
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        story = []
+        styles = getSampleStyleSheet()
+
+        # título
+        mes = hoy.replace(day=1)
+        story.append(Paragraph("Informe cuidados abuela", styles["Title"]))
+        story.append(Spacer(1, 12))
+
+        # tabla mes actual
+        ultimo_dia = monthrange(mes.year, mes.month)[1]
+        dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
+        total_mes = contar_por_tipo(dias_mes, lambda _: True)
+        fines_mes = contar_por_tipo(dias_mes, lambda d: d.weekday() >= 5)
+        fest_mes = contar_por_tipo(dias_mes, lambda d: d.isoformat() in festivos)
+
+        data = [["Persona", "Días", "Fin de semana", "Festivos"]]
+        for nombre in CODIGOS:
+            data.append([nombre, total_mes[nombre], fines_mes[nombre], fest_mes[nombre]])
+        t = Table(data)
+        t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), colors.grey),
+                               ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
+                               ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                               ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                               ("FONTSIZE", (0, 0), (-1, 0), 10),
+                               ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+                               ("BACKGROUND", (0, 1), (-1, -1), colors.beige),
+                               ("GRID", (0, 0), (-1, -1), 1, colors.black)]))
+        story.append(t)
+        doc.build(story)
+        buffer.seek(0)
+        st.sidebar.download_button("📥 Descargar PDF", data=buffer, file_name=f"cuidados_{mes.month}_{mes.year}.pdf", mime="application/pdf")
+
+        st.markdown("---")
+        st.header("Añadir comentario")
+        dia_sel = st.date_input("Día", date.today())
+        txt = st.text_area("Comentario (opcional)")
+        if st.button("Guardar comentario"):
+            key = str(dia_sel)
+            cal.setdefault(key, {}).setdefault("comentarios", []).append(txt)
+            guardar_json(cal)
+            st.success("Guardado")
+
+        if st.button("🔒 Subir cambios a GitHub"):
+            try:
+                repo = Repo(".")
+                with repo.config_writer() as cfg:
+                    cfg.set_value("user", "name", "abuela-bot")
+                    cfg.set_value("user", "email", "abuela@bot.local")
+                repo.git.add(JSON_FILE)
+                repo.index.commit("Update calendar")
+                repo.git.push(st.secrets["REPO_URL"], "main")
+                st.success("✅ Cambios subidos")
+            except Exception as e:
+                st.error(f"Error al subir: {e}")
+
+        if st.button("Reiniciar calendario"):
+            cal.clear()
+            guardar_json({})
+            st.success("Calendario reiniciado")
+            st.rerun()
+
+        # ---------- GRÁFICOS ----------
+st.markdown("---")
+st.subheader("📈 Gráficos")
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
+# barra mes actual
+mes = hoy.replace(day=1)
+ultimo_dia = monthrange(mes.year, mes.month)[1]
+dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
+total_mes = contar_por_tipo(dias_mes, lambda _: True)
+df_mes = pd.DataFrame({"Persona": list(CODIGOS.keys()),
+                       "Días": [total_mes[n] for n in CODIGOS]})
+st.bar_chart(df_mes.set_index("Persona"))
+
+# pastel año
+año_actual = hoy.year
+dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
+total_año = contar_por_tipo(dias_año, lambda _: True)
+fig, ax = plt.subplots()
+ax.pie([total_año[n] for n in CODIGOS], labels=list(CODIGOS.keys()),
+       autopct='%1.1f%%', colors=[COLORES[n] for n in CODIGOS])
+ax.set_title(f"Distribución {año_actual}")
+st.pyplot(fig)
+
+
 
 # ---------- LEYENDA ----------
 st.markdown("---")
