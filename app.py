@@ -300,17 +300,21 @@ fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
 for nombre in CODIGOS:
     st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# ---------- GRÁFICOS (quesito con Plotly) ----------
+# ---------- GRÁFICOS (sin matplotlib ni plotly) ----------
 st.subheader("📊 Gráficos")
 
+# datos
 año_actual = hoy.year
 dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
 total_año = contar_por_tipo(dias_año, lambda _: True)
-df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
 
-fig = px.pie(df_año, values="Días", names="Persona",
-             title=f"Distribución {año_actual}",
-             color="Persona",
-             color_discrete_map=COLORES,
-             hole=0.4)
-st.plotly_chart(fig, use_container_width=True)
+# barra horizontal
+df_bar = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
+st.bar_chart(df_bar.set_index("Persona"))
+
+# tabla bonita con porcentajes
+total = sum(total_año[n] for n in CODIGOS)
+st.write("**Distribución anual (%)**")
+for nombre in CODIGOS:
+    pct = (total_año[nombre] / total * 100) if total else 0
+    st.write(f"{nombre}: **{total_año[nombre]} días** (**{pct:.1f}%**)")
