@@ -299,12 +299,17 @@ fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
 for nombre in CODIGOS:
     st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# ---------- GRÁFICOS (sin matplotlib) ----------
-st.subheader("Gráficos")
-# quesito año
+# ---------- GRÁFICOS (quesito sin matplotlib) ----------
+st.subheader("📊 Gráficos")
+
 año_actual = hoy.year
 dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
 total_año = contar_por_tipo(dias_año, lambda _: True)
 df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
-st.pyplot(st.pyplot.figure(figsize=(4, 4)))
-st.write(df_año.set_index("Persona").plot.pie(y="Días", colors=[COLORES[n] for n in CODIGOS], autopct='%1.1f%%').figure)
+
+# quesito con pandas + st.pyplot
+fig = df_año.set_index("Persona").plot.pie(y="Días",
+                                           colors=[COLORES[n] for n in CODIGOS],
+                                           autopct='%1.1f%%',
+                                           figsize=(4, 4)).figure
+st.pyplot(fig)
