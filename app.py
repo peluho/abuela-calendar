@@ -116,18 +116,19 @@ for i, (nombre, cod) in enumerate(CODIGOS.items()):
             unsafe_allow_html=True
         )
 
-# ---------- 3 MESES EDITABLES (empiezan en lunes) ----------
+# ---------- 3 MESES EDITABLES (empiezan en lunes, misma altura) ----------
 hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
     st.write(f"### {MESES[mes.month-1].capitalize()} {mes.year}")
+
     # encabezado días
     encabezado = st.columns(7, gap="small")
     for d, col in zip(DIA_SEM, encabezado):
         with col:
             st.markdown(f"**{d}**")
 
-    # días del mes
+    # días del mes (6 filas x 7 columnas)
     inicio = mes - timedelta(days=mes.weekday())
     dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
     cols_mes = st.columns(7, gap="small")
@@ -141,11 +142,15 @@ for i in range(3):
             texto = f"{dia.day}" if es_mes else ""
             es_festivo = dia.isoformat() in festivos
             borde = "2px solid #ff4d4d" if es_festivo else "none"
+            inicial = CODIGOS[turno_largo] if es_mes and turno_corto else ""
 
             st.markdown(
                 f"<div style='background:{color};border:{borde};padding:6px;border-radius:6px;"
-                f"text-align:center;font-size:1em'>"
-                f"{'🎉' if es_festivo else ''}{texto}</div>",
+                f"text-align:center;font-size:1em;min-height:48px;display:flex;align-items:center;justify-content:center;'>"
+                f"<div style='width:100%'>"
+                f"<div style='font-size:0.7em;color:#333'>{texto}</div>"
+                f"<div style='font-weight:bold;color:#000'>{inicial}</div>"
+                f"</div></div>",
                 unsafe_allow_html=True
             )
 
