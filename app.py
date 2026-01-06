@@ -116,7 +116,7 @@ for i, (nombre, cod) in enumerate(CODIGOS.items()):
             unsafe_allow_html=True
         )
 
-# ---------- 3 MESES EDITABLES (desplegable *dentro* de la celda) ----------
+# ---------- 3 MESES EDITABLES (color+inicial del calendario) ----------
 hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
@@ -132,7 +132,7 @@ for i in range(3):
     dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
     filas = [dias_visibles[i:i+7] for i in range(0, 42, 7)]
 
-    # pre-aplicamos cambios antes de pintar
+    # pre-cargamos cambios antes de pintar
     for dia in dias_visibles:
         es_mes = dia.month == mes.month
         if not es_mes:
@@ -160,19 +160,20 @@ for i in range(3):
                 borde = "2px solid #ff4d4d" if es_festivo else "none"
 
                 if es_mes:
-                    # desplegable *dentro* de la celda
+                    # desplegable *con* el valor guardado
                     sel_key = f"sel_mes_{mes.month}_{dia.day}"
                     nuevo = st.selectbox(
                         label=f"{texto} {inicial}",
-                        options=[""] + list(CODIGOS.keys()),
+                        options=list(CODIGOS.keys()),
+                        index=list(CODIGOS.keys()).index(turno_largo),
                         key=sel_key,
-                        format_func=lambda x: x if x else "-",
+                        format_func=lambda x: x,
                         label_visibility="collapsed"
                     )
                     if nuevo and nuevo != turno_largo:
                         cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
                         guardar_json(cal)
-                        st.rerun()  # refresca para ver color nuevo
+                        st.rerun()
                 else:
                     st.markdown(
                         f"<div style='background:#eeeeee;padding:6px;border-radius:6px;min-height:48px;'></div>",
