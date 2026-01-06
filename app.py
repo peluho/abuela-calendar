@@ -116,7 +116,7 @@ for i, (nombre, cod) in enumerate(CODIGOS.items()):
             unsafe_allow_html=True
         )
 
-# ---------- 3 MESES EDITABLES (grid perfecto) ----------
+# ---------- 3 MESES EDITABLES (celda = botón) ----------
 hoy = date.today()
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
@@ -131,22 +131,8 @@ for i in range(3):
     # días (6 filas x 7 columnas)
     inicio = mes - timedelta(days=mes.weekday())
     dias_visibles = [inicio + timedelta(days=d) for d in range(42)]
-
-    # pre-cargamos los cambios antes de pintar
-    for dia in dias_visibles:
-        es_mes = dia.month == mes.month
-        if not es_mes:
-            continue
-        key = str(dia)
-        # si el usuario acaba de cambiar este día, lo reflejamos
-        sel_key = f"sel_mes_{mes.month}_{dia.day}"
-        if st.session_state.get(sel_key):
-            cal.setdefault(key, {})["turno"] = CODIGOS[st.session_state[sel_key]]
-            guardar_json(cal)
-            st.session_state[sel_key] = None  # reset
-
-    # pintamos el grid
     filas = [dias_visibles[i:i+7] for i in range(0, 42, 7)]
+
     for semana in filas:
         cols = st.columns(7, gap="small")
         for dia, col in zip(semana, cols):
@@ -161,30 +147,22 @@ for i in range(3):
                 es_festivo = dia.isoformat() in festivos
                 borde = "2px solid #ff4d4d" if es_festivo else "none"
 
-                st.markdown(
-                    f"<div style='background:{color};border:{borde};padding:6px;border-radius:6px;"
-                    f"text-align:center;font-size:1em;min-height:48px;display:flex;"
-                    f"flex-direction:column;justify-content:space-between;'>"
-                    f"<div style='font-size:0.7em;color:#333'>{texto}</div>"
-                    f"<div style='font-weight:bold;color:#000;font-size:0.9em'>{inicial}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
-
-    # **selectores debajo del grid completo** (misma fila, misma orden)
-    st.write("")  # pequeño separador
-    sel_cols = st.columns(7, gap="small")
-    for semana in filas:
-        for dia, col in zip(semana, sel_cols):
-            with col:
-                es_mes = dia.month == mes.month
-                if not es_mes:
-                    st.empty()
-                    continue
-                key = str(dia)
-                turno_largo = NOMBRES.get(cal.get(key, {}).get("turno", ""), "Otro")
-                sel_key = f"sel_mes_{mes.month}_{dia.day}"
-                st.selectbox("⇄", [""] + list(CODIGOS.keys()),
-                             key=sel_key,
-                             format_func=lambda x: x if x else "-",
-                             label_visibility="collapsed")
+                # botón invisible que ocupa toda la celda
+                if es_mes:
+                    label = f"{texto}|{inicial}"
+                    if st.button(label, key=f"btn_{mes.month}_{dia.day}",
+                                 help=f"Cambiar turno {dia.day}/{mes.month}",
+                                 use_container_width=True):
+                        # rotamos turno: Fer → Nines → Conchi → Otro → Fer
+                        orden = list(CODIGOS.keys())
+                        idx = orden.index(turno_largo)
+                        nuevo = orden[(idx + 1) % len(orden)]
+                        cal.setdefault(key, {})["turno"] = CODIGOS[nuevo]
+                        guardar_json(cal)
+                        st.rerun()  # refresca para ver el color nuevo
+                else:
+                    # celda vacía (no clickable)
+                    st.markdown(
+                        f"<div style='background:#eeeeee;padding:6px;border-radius:6px;min-height:48px;'></div>",
+                        unsafe_allow_html=True
+                    )
