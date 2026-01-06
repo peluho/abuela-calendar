@@ -55,7 +55,7 @@ hoy = date.today()
 
 # ---------- SIDEBAR ----------
 # ---------- ESTADÍSTICAS REFINADAS + GRÁFICOS ----------
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import pandas as pd
 from calendar import monthrange
 
@@ -172,12 +172,9 @@ with st.sidebar:
             st.success("Calendario reiniciado")
             st.rerun()
 
-        # ---------- GRÁFICOS ----------
+# ---------- GRÁFICOS (solo Streamlit) ----------
 st.markdown("---")
 st.subheader("📈 Gráficos")
-
-import matplotlib.pyplot as plt
-import pandas as pd
 
 # barra mes actual
 mes = hoy.replace(day=1)
@@ -188,15 +185,13 @@ df_mes = pd.DataFrame({"Persona": list(CODIGOS.keys()),
                        "Días": [total_mes[n] for n in CODIGOS]})
 st.bar_chart(df_mes.set_index("Persona"))
 
-# pastel año
+# pastel año (simulado con barra horizontal)
 año_actual = hoy.year
 dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
 total_año = contar_por_tipo(dias_año, lambda _: True)
-fig, ax = plt.subplots()
-ax.pie([total_año[n] for n in CODIGOS], labels=list(CODIGOS.keys()),
-       autopct='%1.1f%%', colors=[COLORES[n] for n in CODIGOS])
-ax.set_title(f"Distribución {año_actual}")
-st.pyplot(fig)
+df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()),
+                       "Días": [total_año[n] for n in CODIGOS]})
+st.bar_chart(df_año.set_index("Persona"))
 
 
 
