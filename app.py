@@ -49,6 +49,9 @@ def cargar_calendario():
 def guardar_json(data):
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    # log esquemático
+    with open("cambios.log", "a", encoding="utf-8") as log:
+        log.write(f"{date.today()} | {json.dumps(data, ensure_ascii=False)}\n")
 
 # ---------- LÓGICA ----------
 cal = cargar_calendario()
@@ -99,70 +102,73 @@ with st.sidebar:
         for nombre in CODIGOS:
             st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-            # ---------- EXPORTAR CALENDARIO COMPLETO ----------
+# ---------- EXPORTAR CALENDARIO COMPLETO ----------
+st.markdown("---")
+st.subheader("📄 Exportar calendario")
+
+mes_sel = st.selectbox("Mes a exportar", options=range(1, 13), format_func=lambda m: MESES[m-1])
+año_sel = st.number_input("Año a exportar", min_value=2020, max_value=2030, value=hoy.year)
+
+if st.button("Generar HTML"):
+    mes = date(año_sel, mes_sel, 1)
+    ultimo_dia = monthrange(mes.year, mes.month)[1]
+    dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
+
+    html_lines = [f"<h2>Calendario {MESES[mes.month-1].capitalize()} {mes.year}</h2><table border='1' style='border-collapse:collapse;width:100%;text-align:center;'>"]
+    html_lines.append("<tr>" + "".join(f"<th>{d}</th>" for d in DIA_SEM) + "</tr>")
+
+    inicio = mes - timedelta(days=mes.weekday())
+    dias_vis = [inicio + timedelta(days=d) for d in range(42)]
+    filas = [dias_vis[i:i+7] for i in range(0, 42, 7)]
+
+    for sem in filas:
+        html_lines.append("<tr>")
+        for dia in sem:
+            es_mes = dia.month == mes.month
+            key = str(dia)
+            turno = cal.get(key, {}).get("turno", "")
+            nombre = NOMBRES.get(turno, "Otro")
+            color = COLORES.get(nombre, "#ffffff") if es_mes else "#eeeeee"
+            texto = f"{dia.day}" if es_mes else ""
+            inicial = CODIGOS[nombre] if es_mes and turno else ""
+            html_lines.append(f"<td style='background:{color};width:14%;height:60px;'>"
+                              f"<div style='font-size:0.8em;'>{texto}</div>"
+                              f"<div style='font-weight:bold;'>{inicial}</div></td>")
+        html_lines.append("</tr>")
+    html_lines.append("</table>")
+
+    html_str = "\n".join(html_lines)
+    st.download_button("📥 Descargar HTML", data=html_str, file_name=f"calendario_{mes_sel}_{año_sel}.html", mime="text/html")
+
     st.markdown("---")
-    st.subheader("📄 Exportar calendario")
+    st.header("Añadir comentario")
+    dia_sel = st.date_input("Día", date.today())
+    txt = st.text_area("Comentario (opcional)")
+    if st.button("Guardar comentario"):
+        key = str(dia_sel)
+        cal.setdefault(key, {}).setdefault("comentarios", []).append(txt)
+        guardar_json(cal)
+        st.success("Guardado")
 
-    if st.button("Descargar calendario mensual"):
-        mes = hoy.replace(day=1)
-        ultimo_dia = monthrange(mes.year, mes.month)[1]
-        dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
-
-        # HTML bonito
-        html_lines = [f"<h2>Calendario {MESES[mes.month-1].capitalize()} {mes.year}</h2><table border='1' style='border-collapse:collapse;width:100%;text-align:center;'>"]
-        html_lines.append("<tr>" + "".join(f"<th>{d}</th>" for d in DIA_SEM) + "</tr>")
-
-        inicio = mes - timedelta(days=mes.weekday())
-        dias_vis = [inicio + timedelta(days=d) for d in range(42)]
-        filas = [dias_vis[i:i+7] for i in range(0, 42, 7)]
-
-        for sem in filas:
-            html_lines.append("<tr>")
-            for dia in sem:
-                es_mes = dia.month == mes.month
-                key = str(dia)
-                turno = cal.get(key, {}).get("turno", "")
-                nombre = NOMBRES.get(turno, "Otro")
-                color = COLORES.get(nombre, "#ffffff") if es_mes else "#eeeeee"
-                texto = f"{dia.day}" if es_mes else ""
-                inicial = CODIGOS[nombre] if es_mes and turno else ""
-                html_lines.append(f"<td style='background:{color};width:14%;height:60px;'>"
-                                  f"<div style='font-size:0.8em;'>{texto}</div>"
-                                  f"<div style='font-weight:bold;'>{inicial}</div></td>")
-            html_lines.append("</tr>")
-        html_lines.append("</table>")
-
-        html_str = "\n".join(html_lines)
-        st.sidebar.download_button("📥 Descargar HTML", data=html_str, file_name=f"calendario_{mes.month}_{mes.year}.html", mime="text/html")
-
-        st.markdown("---")
-        st.header("Añadir comentario")
-        dia_sel = st.date_input("Día", date.today())
-        txt = st.text_area("Comentario (opcional)")
-        if st.button("Guardar comentario"):
-            key = str(dia_sel)
-            cal.setdefault(key, {}).setdefault("comentarios", []).append(txt)
-            guardar_json(cal)
-            st.success("Guardado")
-
-        if st.button("🔒 Subir cambios a GitHub"):
-            try:
-                repo = Repo(".")
-                with repo.config_writer() as cfg:
-                    cfg.set_value("user", "name", "abuela-bot")
-                    cfg.set_value("user", "email", "abuela@bot.local")
-                repo.git.add(JSON_FILE)
-                repo.index.commit("Update calendar")
-                repo.git.push(st.secrets["REPO_URL"], "main")
-                st.success("✅ Cambios subidos")
-            except Exception as e:
-                st.error(f"Error al subir: {e}")
-
-        if st.button("Reiniciar calendario"):
-            cal.clear()
-            guardar_json({})
-            st.success("Calendario reiniciado")
-            st.rerun()
+    if st.button("🔒 Subir cambios a GitHub"):
+        try:
+            repo = Repo(".")
+            with repo.config_writer() as cfg:
+                cfg.set_value("user", "name", "abuela-bot")
+                cfg.set_value("user", "email", "abuela@bot.local")
+            repo.git.add(JSON_FILE)
+            repo.git.add("cambios.log")
+            repo.index.commit("Update calendar")
+            repo.git.push(st.secrets["REPO_URL"], "main")
+            st.success("✅ Cambios subidos")
+        except Exception as e:
+            st.error(f"Error al subir: {e}")
+            
+    if st.button("Reiniciar calendario"):
+        cal.clear()
+        guardar_json({})
+        st.success("Calendario reiniciado")
+        st.rerun()
 
 # # ---------- GRÁFICOS (solo Streamlit) ----------
 # st.markdown("---")
