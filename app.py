@@ -1,8 +1,8 @@
 import json, os
 from datetime import date, timedelta
+import pandas as pd
 import streamlit as st
 from git import Repo
-# import plotly.express as px 
 import requests
 from calendar import monthrange
 
@@ -53,16 +53,6 @@ def guardar_json(data):
     with open("cambios.log", "a", encoding="utf-8") as log:
         log.write(f"{date.today()} | {json.dumps(data, ensure_ascii=False)}\n")
 
-# ---------- LÓGICA ----------
-cal = cargar_calendario()
-hoy = date.today()
-
-# ---------- SIDEBAR ----------
-# ---------- ESTADÍSTICAS REFINADAS + GRÁFICOS ----------
-# import matplotlib.pyplot as plt
-import pandas as pd
-from calendar import monthrange
-
 def contar_por_tipo(dias, es_tipo):
     cont = {nombre: 0 for nombre in CODIGOS}
     for dia in dias:
@@ -74,11 +64,13 @@ def contar_por_tipo(dias, es_tipo):
                 cont[nombre] += 1
     return cont
 
-# ---------- SIDEBAR ESTADÍSTICAS ----------
+# ---------- LÓGICA ----------
+cal = cargar_calendario()
+hoy = date.today()
+
+# ---------- SIDEBAR ----------
 with st.sidebar:
     st.header("📊 Estadísticas")
-
-    # meses
     for i in range(3):
         mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
         ultimo_dia = monthrange(mes.year, mes.month)[1]
@@ -91,57 +83,19 @@ with st.sidebar:
             for nombre in CODIGOS:
                 st.write(f"{nombre}: **{total_mes[nombre]}** días | **{fines_mes[nombre]}** finde | **{fest_mes[nombre]}** festivos")
 
-    # año completo
     año_actual = hoy.year
     dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
     total_año = contar_por_tipo(dias_año, lambda _: True)
     fines_año = contar_por_tipo(dias_año, lambda d: d.weekday() >= 5)
     fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
-
     with st.expander(f"Año {año_actual}"):
         for nombre in CODIGOS:
             st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# ---------- EXPORTAR CALENDARIO COMPLETO ----------
-st.markdown("---")
-st.subheader("📄 Exportar calendario")
-
-mes_sel = st.selectbox("Mes a exportar", options=range(1, 13), format_func=lambda m: MESES[m-1])
-año_sel = st.number_input("Año a exportar", min_value=2020, max_value=2030, value=hoy.year)
-
-if st.button("Generar HTML"):
-    mes = date(año_sel, mes_sel, 1)
-    ultimo_dia = monthrange(mes.year, mes.month)[1]
-    dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
-
-    html_lines = [f"<h2>Calendario {MESES[mes.month-1].capitalize()} {mes.year}</h2><table border='1' style='border-collapse:collapse;width:100%;text-align:center;'>"]
-    html_lines.append("<tr>" + "".join(f"<th>{d}</th>" for d in DIA_SEM) + "</tr>")
-
-    inicio = mes - timedelta(days=mes.weekday())
-    dias_vis = [inicio + timedelta(days=d) for d in range(42)]
-    filas = [dias_vis[i:i+7] for i in range(0, 42, 7)]
-
-    for sem in filas:
-        html_lines.append("<tr>")
-        for dia in sem:
-            es_mes = dia.month == mes.month
-            key = str(dia)
-            turno = cal.get(key, {}).get("turno", "")
-            nombre = NOMBRES.get(turno, "Otro")
-            color = COLORES.get(nombre, "#ffffff") if es_mes else "#eeeeee"
-            texto = f"{dia.day}" if es_mes else ""
-            inicial = CODIGOS[nombre] if es_mes and turno else ""
-            html_lines.append(f"<td style='background:{color};width:14%;height:60px;'>"
-                              f"<div style='font-size:0.8em;'>{texto}</div>"
-                              f"<div style='font-weight:bold;'>{inicial}</div></td>")
-        html_lines.append("</tr>")
-    html_lines.append("</table>")
-
-    html_str = "\n".join(html_lines)
-    st.download_button("📥 Descargar HTML", data=html_str, file_name=f"calendario_{mes_sel}_{año_sel}.html", mime="text/html")
-
     st.markdown("---")
-    st.header("Añadir comentario")
+    st.subheader("✏️ Acciones")
+
+    # Añadir comentario
     dia_sel = st.date_input("Día", date.today())
     txt = st.text_area("Comentario (opcional)")
     if st.button("Guardar comentario"):
@@ -150,6 +104,41 @@ if st.button("Generar HTML"):
         guardar_json(cal)
         st.success("Guardado")
 
+    # Exportar calendario
+    mes_exp = st.selectbox("Mes a exportar", options=range(1, 13), format_func=lambda m: MESES[m-1])
+    año_exp = st.number_input("Año a exportar", min_value=2020, max_value=2030, value=hoy.year)
+    if st.button("Exportar HTML"):
+        mes = date(año_exp, mes_exp, 1)
+        ultimo_dia = monthrange(mes.year, mes.month)[1]
+        dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
+
+        html_lines = [f"<h2>Calendario {MESES[mes.month-1].capitalize()} {mes.year}</h2><table border='1' style='border-collapse:collapse;width:100%;text-align:center;'>"]
+        html_lines.append("<tr>" + "".join(f"<th>{d}</th>" for d in DIA_SEM) + "</tr>")
+
+        inicio = mes - timedelta(days=mes.weekday())
+        dias_vis = [inicio + timedelta(days=d) for d in range(42)]
+        filas = [dias_vis[i:i+7] for i in range(0, 42, 7)]
+
+        for sem in filas:
+            html_lines.append("<tr>")
+            for dia in sem:
+                es_mes = dia.month == mes.month
+                key = str(dia)
+                turno = cal.get(key, {}).get("turno", "")
+                nombre = NOMBRES.get(turno, "Otro")
+                color = COLORES.get(nombre, "#ffffff") if es_mes else "#eeeeee"
+                texto = f"{dia.day}" if es_mes else ""
+                inicial = CODIGOS[nombre] if es_mes and turno else ""
+                html_lines.append(f"<td style='background:{color};width:14%;height:60px;'>"
+                                  f"<div style='font-size:0.8em;'>{texto}</div>"
+                                  f"<div style='font-weight:bold;'>{inicial}</div></td>")
+            html_lines.append("</tr>")
+        html_lines.append("</table>")
+
+        html_str = "\n".join(html_lines)
+        st.download_button("📥 Descargar HTML", data=html_str, file_name=f"calendario_{mes_exp}_{año_exp}.html", mime="text/html")
+
+    # Subir a GitHub
     if st.button("🔒 Subir cambios a GitHub"):
         try:
             repo = Repo(".")
@@ -163,35 +152,12 @@ if st.button("Generar HTML"):
             st.success("✅ Cambios subidos")
         except Exception as e:
             st.error(f"Error al subir: {e}")
-            
+
     if st.button("Reiniciar calendario"):
         cal.clear()
         guardar_json({})
         st.success("Calendario reiniciado")
         st.rerun()
-
-# # ---------- GRÁFICOS (solo Streamlit) ----------
-# st.markdown("---")
-# st.subheader("📈 Gráficos")
-
-# # barra mes actual
-# mes = hoy.replace(day=1)
-# ultimo_dia = monthrange(mes.year, mes.month)[1]
-# dias_mes = [mes.replace(day=d) for d in range(1, ultimo_dia + 1)]
-# total_mes = contar_por_tipo(dias_mes, lambda _: True)
-# df_mes = pd.DataFrame({"Persona": list(CODIGOS.keys()),
-#                        "Días": [total_mes[n] for n in CODIGOS]})
-# st.bar_chart(df_mes.set_index("Persona"))
-
-# # pastel año (simulado con barra horizontal)
-# año_actual = hoy.year
-# dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
-# total_año = contar_por_tipo(dias_año, lambda _: True)
-# df_año = pd.DataFrame({"Persona": list(CODIGOS.keys()),
-#                        "Días": [total_año[n] for n in CODIGOS]})
-# st.bar_chart(df_año.set_index("Persona"))
-
-
 
 # ---------- LEYENDA ----------
 st.markdown("---")
@@ -250,7 +216,6 @@ for i in range(3):
                 cerco_color = f"2px solid {color}" if es_mes else "none"
 
                 if es_mes:
-                    # celda bonita
                     st.markdown(
                         f"<div style='background:{color};border:{cerco_color};border-top:{borde_fest};"
                         f"padding:6px;border-radius:6px;text-align:center;font-size:1em;"
@@ -260,10 +225,9 @@ for i in range(3):
                         f"</div>",
                         unsafe_allow_html=True
                     )
-                    # selector debajo, mismo orden
                     sel_key = f"sel_mes_{mes.month}_{dia.day}"
                     nuevo = st.selectbox(
-                        "⇄",  # texto corto para no romper
+                        "",
                         options=list(CODIGOS.keys()),
                         index=list(CODIGOS.keys()).index(turno_largo),
                         key=sel_key,
@@ -279,11 +243,11 @@ for i in range(3):
                         f"<div style='background:#eeeeee;padding:6px;border-radius:6px;min-height:48px;'></div>",
                         unsafe_allow_html=True
                     )
-# ---------- ESTADÍSTICAS Y GRÁFICOS FINALES ----------
+
+# ---------- ESTADÍSTICAS FINALES (solo al final) ----------
 st.markdown("---")
 st.header("📊 Resumen final")
 
-# estadísticas
 st.subheader("Estadísticas por mes")
 for i in range(3):
     mes = (hoy.replace(day=1) + timedelta(days=32*i)).replace(day=1)
@@ -306,19 +270,11 @@ fest_año = contar_por_tipo(dias_año, lambda d: d.isoformat() in festivos)
 for nombre in CODIGOS:
     st.write(f"{nombre}: **{total_año[nombre]}** días | **{fines_año[nombre]}** finde | **{fest_año[nombre]}** festivos")
 
-# ---------- GRÁFICOS (sin matplotlib ni plotly) ----------
-st.subheader("📊 Gráficos")
-
-# datos
-año_actual = hoy.year
-dias_año = [date(año_actual, 1, 1) + timedelta(days=d) for d in range(366)]
-total_año = contar_por_tipo(dias_año, lambda _: True)
-
-# barra horizontal
+# ---------- GRÁFICOS (sin matplotlib) ----------
+st.subheader("📈 Gráficos")
 df_bar = pd.DataFrame({"Persona": list(CODIGOS.keys()), "Días": [total_año[n] for n in CODIGOS]})
 st.bar_chart(df_bar.set_index("Persona"))
 
-# tabla bonita con porcentajes
 total = sum(total_año[n] for n in CODIGOS)
 st.write("**Distribución anual (%)**")
 for nombre in CODIGOS:
